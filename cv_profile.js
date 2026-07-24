@@ -1,72 +1,68 @@
-function animateCvProfile() {
-  const page = document.getElementById("cvProfilePage") || document.querySelector(".cv-portfolio-page");
-  if (!page || page.dataset.cvAnimated === "true") return;
-  if (!window.anime || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    page.dataset.cvAnimated = "true";
-    return;
+(() => {
+  const shell = document.querySelector('.story-shell');
+  const screens = [...document.querySelectorAll('.screen')];
+  const menuButton = document.querySelector('.menu-toggle');
+  const nav = document.querySelector('.primary-nav');
+  const current = document.querySelector('#screen-current');
+  const total = document.querySelector('#screen-total');
+  const progress = document.querySelector('#progress-fill');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  total.textContent = String(screens.length).padStart(2, '0');
+
+  const closeMenu = () => {
+    nav?.classList.remove('open');
+    menuButton?.setAttribute('aria-expanded', 'false');
+  };
+  menuButton?.addEventListener('click', () => {
+    const open = nav?.classList.toggle('open');
+    menuButton.setAttribute('aria-expanded', String(Boolean(open)));
+  });
+  nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
+
+  const baseUrl = document.querySelector('meta[name="case-study-base-url"]')?.content.trim().replace(/\/$/, '');
+  if (baseUrl) document.querySelectorAll('[data-case-study-link]').forEach((link) => { link.href = `${baseUrl}/stories/natural_science_case.html`; });
+
+  const revealScreen = (screen) => {
+    screen.querySelectorAll('.reveal').forEach((item, index) => {
+      item.style.transitionDelay = reducedMotion ? '0ms' : `${Math.min(index * 90, 270)}ms`;
+      item.classList.add('is-visible');
+    });
+  };
+
+  const navLinks = [...document.querySelectorAll('.primary-nav a[href^="#"]')];
+  const updateActive = (screen, index) => {
+    current.textContent = String(index + 1).padStart(2, '0');
+    progress.style.height = `${((index + 1) / screens.length) * 100}%`;
+    revealScreen(screen);
+    navLinks.forEach((link) => {
+      const target = document.querySelector(link.getAttribute('href'));
+      const active = target === screen || (target && target.id.split('-')[0] === screen.id.split('-')[0]);
+      link.toggleAttribute('aria-current', active);
+    });
+    document.title = `${screen.dataset.title} | Victor Rojas`;
+  };
+
+  if ('IntersectionObserver' in window) {
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries.filter((entry) => entry.isIntersecting).sort((a,b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (!visible) return;
+      updateActive(visible.target, screens.indexOf(visible.target));
+    }, { root: shell, threshold: [0.55, 0.75, 0.95] });
+    screens.forEach((screen) => observer.observe(screen));
+  } else {
+    screens.forEach(revealScreen);
   }
 
-  const revealTargets = [
-    ".cv-hero-kicker",
-    ".cv-hero-statement .eyebrow",
-    ".cv-hero-statement h2",
-    ".cv-hero-statement p",
-    ".cv-hero-actions",
-    ".cv-hero-card"
-  ];
-  const metricTargets = page.querySelectorAll(".cv-proof-strip article");
-  const sectionTargets = page.querySelectorAll(".cv-portfolio-section, .cv-testimonial-band, .cv-contact-footer");
-  const cardTargets = page.querySelectorAll(".cv-skill-board article, .cv-case-card, .cv-pipeline article, .cv-authority-grid article");
-
-  [...revealTargets.flatMap((selector) => Array.from(page.querySelectorAll(selector))), ...metricTargets, ...sectionTargets, ...cardTargets].forEach((el) => {
-    el.style.opacity = "0";
-    el.style.transform = "translate3d(0,18px,0)";
+  document.addEventListener('keydown', (event) => {
+    if (!['ArrowDown','ArrowUp','PageDown','PageUp'].includes(event.key)) return;
+    const activeIndex = Math.round(shell.scrollTop / shell.clientHeight);
+    const direction = ['ArrowDown','PageDown'].includes(event.key) ? 1 : -1;
+    const next = Math.max(0, Math.min(screens.length - 1, activeIndex + direction));
+    event.preventDefault();
+    screens[next].scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth' });
   });
 
-  const timeline = anime.timeline();
-  timeline
-    .add({
-      targets: revealTargets.map((selector) => `#cvProfilePage ${selector}`),
-      opacity: [0, 1],
-      translateY: [24, 0],
-      duration: 720,
-      delay: anime.stagger(85),
-      easing: "easeOutExpo"
-    })
-    .add({
-      targets: "#cvProfilePage .cv-proof-strip article",
-      opacity: [0, 1],
-      translateY: [18, 0],
-      scale: [0.98, 1],
-      duration: 520,
-      delay: anime.stagger(70),
-      easing: "easeOutCubic"
-    }, 420)
-    .add({
-      targets: "#cvProfilePage .cv-portfolio-section, #cvProfilePage .cv-testimonial-band, #cvProfilePage .cv-contact-footer",
-      opacity: [0, 1],
-      translateY: [22, 0],
-      duration: 580,
-      delay: anime.stagger(90),
-      easing: "easeOutCubic"
-    }, 760)
-    .add({
-      targets: "#cvProfilePage .cv-skill-board article, #cvProfilePage .cv-case-card, #cvProfilePage .cv-pipeline article, #cvProfilePage .cv-authority-grid article",
-      opacity: [0, 1],
-      translateY: [16, 0],
-      scale: [0.985, 1],
-      duration: 460,
-      delay: anime.stagger(35),
-      easing: "easeOutCubic"
-    }, 980);
-
-  page.dataset.cvAnimated = "true";
-}
-
-window.animateCvProfile = animateCvProfile;
-
-document.addEventListener("DOMContentLoaded", () => {
-  if (document.body?.classList.contains("cv-standalone-body")) {
-    animateCvProfile();
-  }
-});
+  window.addEventListener('resize', closeMenu);
+  revealScreen(screens[0]);
+})();
