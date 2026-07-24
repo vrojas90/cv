@@ -1,66 +1,72 @@
-(() => {
-  const menuButton = document.querySelector('.menu-toggle');
-  const nav = document.querySelector('.primary-nav');
+function animateCvProfile() {
+  const page = document.getElementById("cvProfilePage") || document.querySelector(".cv-portfolio-page");
+  if (!page || page.dataset.cvAnimated === "true") return;
+  if (!window.anime || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    page.dataset.cvAnimated = "true";
+    return;
+  }
 
-  const closeMenu = () => {
-    nav?.classList.remove('open');
-    menuButton?.setAttribute('aria-expanded', 'false');
-  };
+  const revealTargets = [
+    ".cv-hero-kicker",
+    ".cv-hero-statement .eyebrow",
+    ".cv-hero-statement h2",
+    ".cv-hero-statement p",
+    ".cv-hero-actions",
+    ".cv-hero-card"
+  ];
+  const metricTargets = page.querySelectorAll(".cv-proof-strip article");
+  const sectionTargets = page.querySelectorAll(".cv-portfolio-section, .cv-testimonial-band, .cv-contact-footer");
+  const cardTargets = page.querySelectorAll(".cv-skill-board article, .cv-case-card, .cv-pipeline article, .cv-authority-grid article");
 
-  menuButton?.addEventListener('click', () => {
-    const open = nav?.classList.toggle('open');
-    menuButton.setAttribute('aria-expanded', String(Boolean(open)));
+  [...revealTargets.flatMap((selector) => Array.from(page.querySelectorAll(selector))), ...metricTargets, ...sectionTargets, ...cardTargets].forEach((el) => {
+    el.style.opacity = "0";
+    el.style.transform = "translate3d(0,18px,0)";
   });
 
-  nav?.querySelectorAll('a').forEach((link) => link.addEventListener('click', closeMenu));
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 1100) closeMenu();
-  });
+  const timeline = anime.timeline();
+  timeline
+    .add({
+      targets: revealTargets.map((selector) => `#cvProfilePage ${selector}`),
+      opacity: [0, 1],
+      translateY: [24, 0],
+      duration: 720,
+      delay: anime.stagger(85),
+      easing: "easeOutExpo"
+    })
+    .add({
+      targets: "#cvProfilePage .cv-proof-strip article",
+      opacity: [0, 1],
+      translateY: [18, 0],
+      scale: [0.98, 1],
+      duration: 520,
+      delay: anime.stagger(70),
+      easing: "easeOutCubic"
+    }, 420)
+    .add({
+      targets: "#cvProfilePage .cv-portfolio-section, #cvProfilePage .cv-testimonial-band, #cvProfilePage .cv-contact-footer",
+      opacity: [0, 1],
+      translateY: [22, 0],
+      duration: 580,
+      delay: anime.stagger(90),
+      easing: "easeOutCubic"
+    }, 760)
+    .add({
+      targets: "#cvProfilePage .cv-skill-board article, #cvProfilePage .cv-case-card, #cvProfilePage .cv-pipeline article, #cvProfilePage .cv-authority-grid article",
+      opacity: [0, 1],
+      translateY: [16, 0],
+      scale: [0.985, 1],
+      duration: 460,
+      delay: anime.stagger(35),
+      easing: "easeOutCubic"
+    }, 980);
 
-  const baseUrl = document.querySelector('meta[name="case-study-base-url"]')?.content.trim().replace(/\/$/, '');
-  if (baseUrl) {
-    document.querySelectorAll('[data-case-study-link]').forEach((link) => {
-      link.href = `${baseUrl}/stories/natural_science_case.html`;
-    });
+  page.dataset.cvAnimated = "true";
+}
+
+window.animateCvProfile = animateCvProfile;
+
+document.addEventListener("DOMContentLoaded", () => {
+  if (document.body?.classList.contains("cv-standalone-body")) {
+    animateCvProfile();
   }
-
-  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const elements = document.querySelectorAll('.reveal');
-
-  if (reducedMotion || !('IntersectionObserver' in window)) {
-    elements.forEach((element) => element.classList.add('is-visible'));
-  } else {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-visible');
-        observer.unobserve(entry.target);
-      });
-    }, { threshold: 0.1, rootMargin: '0px 0px -35px' });
-
-    elements.forEach((element, index) => {
-      element.style.transitionDelay = `${Math.min((index % 3) * 70, 140)}ms`;
-      observer.observe(element);
-    });
-  }
-
-  const navLinks = [...document.querySelectorAll('.primary-nav a[href^="#"]')];
-  const sections = navLinks
-    .map((link) => document.querySelector(link.getAttribute('href')))
-    .filter(Boolean);
-
-  if ('IntersectionObserver' in window && sections.length) {
-    const sectionObserver = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-      if (!visible) return;
-      navLinks.forEach((link) => {
-        const active = link.getAttribute('href') === `#${visible.target.id}`;
-        if (active) link.setAttribute('aria-current', 'true');
-        else link.removeAttribute('aria-current');
-      });
-    }, { rootMargin: '-28% 0px -58% 0px', threshold: [0.05, 0.25, 0.5] });
-    sections.forEach((section) => sectionObserver.observe(section));
-  }
-})();
+});
